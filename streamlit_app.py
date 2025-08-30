@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from openai import OpenAI
 
 # Show title and description.
@@ -35,7 +36,13 @@ else:
     if uploaded_file and question:
 
         # Process the uploaded file and question.
-        document = uploaded_file.read().decode()
+        file_extension = uploaded_file.name.split('.')[-1]
+        if file_extension == 'txt':
+           document = uploaded_file.read().decode()
+        elif file_extension == 'pdf':
+           document = pd.read_pdf(uploaded_file)
+        else:
+           st.error("Unsupported file type.")
         messages = [
             {
                 "role": "user",
