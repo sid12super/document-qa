@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import PyPDF2
 from openai import OpenAI
 
 # Show title and description.
@@ -40,9 +40,17 @@ else:
         if file_extension == 'txt':
            document = uploaded_file.read().decode()
         elif file_extension == 'pdf':
-           document = pd.read_pdf(uploaded_file)
+          try:
+            pdf_reader = PyPDF2.PdfReader(uploaded_file)
+            document = ""
+            for page in pdf_reader.pages:
+                document += page.extract_text()
+          except Exception as e:
+            st.error(f"Error reading PDF file: {e}")
+            document = None
         else:
            st.error("Unsupported file type.")
+           document = None
         messages = [
             {
                 "role": "user",
