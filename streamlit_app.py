@@ -15,7 +15,7 @@ def main():
         st.title("Welcome to Sid's Multi-Page App")
         st.write(
             "This multi-page app allows you to explore different functionalities. "
-            "Navigate to the 'Document QA' or 'Lab2' page to explore more!"
+            "Navigate to the 'Lab1' or 'Lab2' page to explore more!"
         )
     elif page == "Lab1":
         lab1.main()  # Call the `main` function from lab1.py
