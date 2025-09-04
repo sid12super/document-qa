@@ -17,10 +17,6 @@ def main():
             "This multi-page app allows you to explore different functionalities. "
             "Navigate to the 'Document QA' or 'Lab2' page to explore more!"
         )
-        st.image(
-            "https://via.placeholder.com/800x400.png?text=Document+QA+App",
-            caption="Sid's Document QA App",
-        )
     elif page == "Lab1":
         lab1.main()  # Call the `main` function from lab1.py
     elif page == "Lab2":
