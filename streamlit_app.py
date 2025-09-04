@@ -7,7 +7,7 @@ def main():
 
     # Sidebar navigation
     st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Landing Page", "Document QA", "Lab2"])
+    page = st.sidebar.radio("Go to", ["Landing Page", "Lab1", "Lab2"])
 
     # Render the selected page
     if page == "Landing Page":
