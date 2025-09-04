@@ -3,14 +3,13 @@ from openai import OpenAI
 
 def main():
     # Show title and description.
-    st.title("📄 Lab 2B")
+    st.title("📄 Sid's Document Question Answering (Lab 2)")
     st.write(
         "Upload a document below and ask a question about it – GPT will answer! "
-        "To use this app, you need to configure your OpenAI API key in Streamlit Secrets. "
-        "Using GPT-5-nano"
+        "To use this app, the OpenAI API key is securely retrieved from Streamlit Secrets."
     )
 
-    # Retrieve the LLM key from Streamlit Secrets
+    # Retrieve the OpenAI API key from Streamlit Secrets
     openai_api_key = st.secrets.get("OPENAI_API_KEY")
     if not openai_api_key:
         st.error("OpenAI API key is missing! Please configure it in Streamlit Secrets.")
