@@ -1,14 +1,16 @@
 import streamlit as st
-
-# Define the pages
-lab2_page = st.Page("lab2.py", title="Lab 2 (Default)", icon=":material/home:")
-lab1_page = st.Page("lab1.py", title="Lab 1", icon=":material/science:")
-
-# Setup navigation
-pg = st.navigation([lab2_page, lab1_page])
+import lab1  # Import lab1.py to reuse its functionality
 
 # Set page config
 st.set_page_config(page_title="Lab Manager", page_icon=":material/apps:")
 
-# Run the navigation
-pg.run()
+# Sidebar navigation
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ["Lab 2 (Default)", "Lab 1"])
+
+# Render the selected page
+if page == "Lab 2 (Default)":
+    st.title("Welcome to Lab 2")
+    st.write("This is the default page for Lab 2.")
+elif page == "Lab 1":
+    lab1.main()  # Call a `main` function from lab1.py
