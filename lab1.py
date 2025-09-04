@@ -6,14 +6,13 @@ def main():
     st.title("📄 Sid's Document Question Answering")
     st.write(
         "Upload a document below and ask a question about it – GPT will answer! "
-        "To use this app, you need to configure your OpenAI API key in Streamlit Secrets. "
-        "Using GPT-5-nano"
+        "To use this app, you need to manually input your OpenAI API key."
     )
 
-    # Retrieve the LLM key from Streamlit Secrets
-    openai_api_key = st.secrets.get("OPENAI_API_KEY")
+    # Ask user for their OpenAI API key via `st.text_input`.
+    openai_api_key = st.text_input("Enter your OpenAI API Key", type="password")
     if not openai_api_key:
-        st.error("OpenAI API key is missing! Please configure it in Streamlit Secrets.")
+        st.info("Please enter your OpenAI API key to continue.", icon="🗝️")
     else:
         # Create an OpenAI client.
         client = OpenAI(api_key=openai_api_key)
