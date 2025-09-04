@@ -4,70 +4,70 @@ import os
 
 def main():
     # Show title and description.
-    st.title("📄 Sid's Document Summarization (Lab 2)")
-    st.write(
-        "Upload a document below and select the type of summary you'd like to generate. "
-        "You can also choose between the advanced model (4o) and the mini model (4o-mini)."
-    )
+    st.title("📄 Gautam's Document Bot - Lab 2")
+    st.write("Upload a document and choose how you’d like it summarized!")
 
-    # Retrieve the OpenAI API key from Streamlit Secrets
+    # Retrieve the OpenAI API key from Streamlit Secrets or environment variable
     openai_api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
     if not openai_api_key:
-        st.error("OpenAI API key is missing! Please configure it in Streamlit Secrets.")
+        st.error("No API key found. Please set it in .streamlit/secrets.toml or the Secrets Manager.")
         return
 
-    # Sidebar options
-    st.sidebar.title("Summary Options")
-    summary_type = st.sidebar.radio(
-        "Select Summary Type:",
-        [
-            "Summarize in 100 words",
-            "Summarize in 2 connecting paragraphs",
-            "Summarize in 5 bullet points",
-        ],
-    )
-    use_advanced_model = st.sidebar.checkbox("Use Advanced Model (4o)")
+    # Create an OpenAI client
+    client = OpenAI(api_key=openai_api_key)
 
-    # Let the user upload a file via `st.file_uploader`.
+    # Sidebar: summary options
+    st.sidebar.header("Summary Options")
+    summary_type = st.sidebar.radio(
+        "Choose summary style:",
+        ("100 words", "2 paragraphs", "5 bullet points")
+    )
+
+    # Sidebar: model selection
+    st.sidebar.header("Model Selection")
+    model = st.sidebar.selectbox(
+        "Choose the model:",
+        options=["gpt-4o", "gpt-4o-mini", "gpt-5-chat-latest", "gpt-5-nano"],
+        index=1  # default = gpt-4o-mini
+    )
+
+    # Upload document
     uploaded_file = st.file_uploader(
         "Upload a document (.txt or .md)", type=("txt", "md")
     )
 
     if uploaded_file:
-        # Read and decode the uploaded file.
+        # Read and decode the uploaded file
         document = uploaded_file.read().decode()
 
-        # Display the uploaded document.
-        st.subheader("Uploaded Document")
-        st.text_area("Document Content", document, height=300, disabled=True)
+        # Prompt instruction based on summary type
+        if summary_type == "100 words":
+            instruction = "Summarize the document in about 100 words."
+        elif summary_type == "2 paragraphs":
+            instruction = "Summarize the document in exactly 2 connecting paragraphs."
+        else:  # 5 bullet points
+            instruction = "Summarize the document in 5 concise bullet points."
 
-        # Determine the model to use.
-        model = "gpt-4o" if use_advanced_model else "gpt-4o-mini"
+        # Prepare the prompt for the OpenAI API
+        messages = [
+            {
+                "role": "user",
+                "content": f"Here’s a document: {document}\n\n---\n\n{instruction}"
+            }
+        ]
 
-        # Generate the summary based on the selected type.
-        instructions = {
-            "Summarize in 100 words": "Provide a concise summary of the document in 100 words.",
-            "Summarize in 2 connecting paragraphs": "Provide a summary of the document in 2 connecting paragraphs.",
-            "Summarize in 5 bullet points": "Provide a summary of the document in 5 bullet points.",
-        }
-        prompt = f"Document: {document}\n\nInstructions: {instructions[summary_type]}"
-
-        # Create an OpenAI client.
-        client = OpenAI(api_key=openai_api_key)
-
-        try:
-            # Generate the summary using the OpenAI API.
-            response = client.chat.completions.create(
-                model=model,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            summary = response["choices"][0]["message"]["content"]
-
-            # Display the summary.
-            st.subheader("Generated Summary")
-            st.write(summary)
-        except Exception as e:
-            st.error(f"Error generating summary: {e}")
+        # Generate the summary
+        with st.spinner(f"Generating summary using {model}..."):
+            try:
+                response = client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    stream=True,
+                )
+                st.subheader("Generated Summary")
+                st.write(response["choices"][0]["message"]["content"])
+            except Exception as e:
+                st.error(f"Error generating summary: {e}")
     else:
         st.info("Please upload a document to generate a summary.")
 
