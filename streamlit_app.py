@@ -21,7 +21,7 @@ def main():
             "https://via.placeholder.com/800x400.png?text=Document+QA+App",
             caption="Sid's Document QA App",
         )
-    elif page == "Document QA":
+    elif page == "Lab1":
         lab1.main()  # Call the `main` function from lab1.py
     elif page == "Lab2":
         lab2.main()  # Call the `main` function from lab2.py

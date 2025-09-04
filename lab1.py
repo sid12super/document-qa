@@ -3,7 +3,7 @@ from openai import OpenAI
 
 def main():
     # Show title and description.
-    st.title("📄 Sid's Document Question Answering")
+    st.title("📄 Sid's Document Question Answering (Lab 1)")
     st.write(
         "Upload a document below and ask a question about it – GPT will answer! "
         "To use this app, you need to manually input your OpenAI API key."
