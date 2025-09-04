@@ -66,7 +66,7 @@ def main():
                 response = client.chat.completions.create(
                     model=model,
                     messages=messages,
-                    stream=True,
+                    stream=False,
                 )
                 st.subheader("Generated Summary")
                 st.write(response["choices"][0]["message"]["content"])
