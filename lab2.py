@@ -4,7 +4,7 @@ import os
 
 def main():
     # Show title and description.
-    st.title("📄 Gautam's Document Bot - Lab 2")
+    st.title("📄 Sid's Document Bot - Lab 2")
     st.write("Upload a document and choose how you’d like it summarized!")
 
     # Retrieve the OpenAI API key from Streamlit Secrets or environment variable
