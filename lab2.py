@@ -1,5 +1,6 @@
 import streamlit as st
 from openai import OpenAI
+import os
 
 def main():
     # Show title and description.
@@ -10,7 +11,7 @@ def main():
     )
 
     # Retrieve the OpenAI API key from Streamlit Secrets
-    openai_api_key = st.secrets.get("OPENAI_API_KEY")
+    openai_api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
     if not openai_api_key:
         st.error("OpenAI API key is missing! Please configure it in Streamlit Secrets.")
         return
