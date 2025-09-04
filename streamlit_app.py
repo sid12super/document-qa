@@ -3,7 +3,7 @@ import lab1  # Import lab1.py for Document QA functionality
 import lab2  # Import lab2.py for Lab2 functionality
 
 def main():
-    st.set_page_config(page_title="Document QA Chatbot", page_icon="📄")
+    st.set_page_config(page_title="Multi-page App", page_icon="📄")
 
     # Sidebar navigation
     st.sidebar.title("Navigation")
@@ -12,7 +12,7 @@ def main():
     # Render the selected page
     if page == "Landing Page":
         # Landing page content
-        st.title("Welcome to Sid's Document QA App")
+        st.title("Welcome to Sid's Multi-Page App")
         st.write(
             "This app allows you to upload a document and ask questions about it using GPT. "
             "Navigate to the 'Document QA' or 'Lab2' page to explore more!"
