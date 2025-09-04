@@ -14,7 +14,7 @@ def main():
         # Landing page content
         st.title("Welcome to Sid's Multi-Page App")
         st.write(
-            "This app allows you to upload a document and ask questions about it using GPT. "
+            "This multi-page app allows you to explore different functionalities. "
             "Navigate to the 'Document QA' or 'Lab2' page to explore more!"
         )
         st.image(
