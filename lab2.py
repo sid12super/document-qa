@@ -8,9 +8,9 @@ def main():
     st.write("Upload a document and choose how you’d like it summarized!")
 
     # Retrieve the OpenAI API key from Streamlit Secrets or environment variable
-    openai_api_key = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY"))
+    openai_api_key = st.secrets.get("OPENAI_API_KEY") if "OPENAI_API_KEY" in st.secrets else os.getenv("OPENAI_API_KEY")
     if not openai_api_key:
-        st.error("No API key found. Please set it in .streamlit/secrets.toml or the Secrets Manager.")
+        st.error("No API key found. Please set it in .streamlit/secrets.toml or as an environment variable.")
         return
 
     # Create an OpenAI client
