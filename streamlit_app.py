@@ -1,26 +1,26 @@
 import streamlit as st
-import lab1  # Import lab1.py for Document QA functionality
-import lab2  # Import lab2.py for Lab2 functionality
+import HW1  # Renamed from lab1
+import HW2  # Renamed from lab2
 
 def main():
-    st.set_page_config(page_title="Multi-page App", page_icon="📄")
+    st.set_page_config(page_title="HW Manager", page_icon="📚")
 
     # Sidebar navigation
     st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Landing Page", "Lab1", "Lab2"])
+    page = st.sidebar.radio("Go to", ["Home", "HW1", "HW2"])
 
     # Render the selected page
-    if page == "Landing Page":
+    if page == "Home":
         # Landing page content
-        st.title("Welcome to Sid's Multi-Page App")
+        st.title("Welcome to the HW Manager")
         st.write(
-            "This multi-page app allows you to explore different functionalities. "
-            "Navigate to the 'Lab1' or 'Lab2' page to explore more!"
+            "This multi-page app allows you to explore different homework assignments. "
+            "Use the sidebar to navigate to 'HW1' or 'HW2'!"
         )
-    elif page == "Lab1":
-        lab1.main()  # Call the `main` function from lab1.py
-    elif page == "Lab2":
-        lab2.main()  # Call the `main` function from lab2.py
+    elif page == "HW1":
+        HW1.main()  # Call the `main` function from HW1.py
+    elif page == "HW2":
+        HW2.main()  # Call the `main` function from HW2.py
 
 if __name__ == "__main__":
     main()
