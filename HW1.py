@@ -1,5 +1,5 @@
 import streamlit as st
-import PyPDF2
+from pypdf import PdfReader
 from openai import OpenAI
 
 # Show title and description.
@@ -48,7 +48,7 @@ else:
             document = uploaded_file.read().decode()
         elif file_extension == 'pdf':
             try:
-                pdf_reader = PyPDF2.PdfReader(uploaded_file)
+                pdf_reader = PdfReader(uploaded_file)
                 document = ""
                 for page in pdf_reader.pages:
                     document += page.extract_text()
