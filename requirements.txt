@@ -3,3 +3,5 @@ pypdf
 openai
 requests
 beautifulsoup4
+google-generativeai
+anthropic
