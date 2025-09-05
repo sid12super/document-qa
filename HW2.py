@@ -37,7 +37,7 @@ def main():
     models_available = []
 
     if llm_provider == "OpenAI":
-        models_available = ["gpt-4o", "gpt-4-turbo"]
+        models_available = ["gpt-3.5-turbo", "gpt-5-chat-latest", "gpt-5-nano"]
         api_key = st.secrets.get("OPENAI_API_KEY")
         if not api_key:
             st.error("OpenAI API key not found. Please set it in .streamlit/secrets.toml")
@@ -52,10 +52,7 @@ def main():
         genai.configure(api_key=api_key)
 
     elif llm_provider == "Anthropic Claude":
-        # --- FIXED THE ERROR HERE ---
-        # Replaced the premium 'claude-3-opus' model with the more accessible 'claude-3-haiku'
-        # model to resolve the '404 model not found' error, which is common for keys
-        # that don't have access to the most expensive model.
+        
         models_available = ["claude-3-haiku-20240307", "claude-3-sonnet-20240229"]
         api_key = st.secrets.get("ANTHROPIC_API_KEY")
         if not api_key:
