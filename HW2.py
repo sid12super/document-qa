@@ -37,14 +37,14 @@ def main():
     models_available = []
 
     if llm_provider == "OpenAI":
-        models_available = ["gpt-3.5-turbo", "gpt-5-chat-latest", "gpt-5-nano"]
+        models_available = ["gpt-5-mini", "gpt-5-chat-latest", "gpt-5-nano"]
         api_key = st.secrets.get("OPENAI_API_KEY")
         if not api_key:
             st.error("OpenAI API key not found. Please set it in .streamlit/secrets.toml")
             st.stop()
 
     elif llm_provider == "Google Gemini":
-        models_available = ["gemini-1.5-pro-latest", "gemini-1.5-flash-latest"]
+        models_available = ["gemini-2.5-pro", "gemini-2.5-flash-lite","gemini-2.5-flash"]
         api_key = st.secrets.get("GOOGLE_API_KEY")
         if not api_key:
             st.error("Google API key not found. Please set it in .streamlit/secrets.toml")
@@ -53,7 +53,7 @@ def main():
 
     elif llm_provider == "Anthropic Claude":
         
-        models_available = ["claude-3-haiku-20240307", "claude-3-sonnet-20240229"]
+        models_available = ["claude-3-5-haiku-20241022", "claude-sonnet-4-20250514","claude-opus-4-20250514"]
         api_key = st.secrets.get("ANTHROPIC_API_KEY")
         if not api_key:
             st.error("Anthropic API key not found. Please set it in .streamlit/secrets.toml")
