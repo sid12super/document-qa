@@ -33,18 +33,24 @@ def main():
         ("OpenAI", "Google Gemini", "Anthropic Claude")
     )
 
+    # --- Checkbox for advanced models ---
+    use_advanced = st.sidebar.checkbox("Use advanced model")
+
     api_key = None
     models_available = []
+    advanced_model = None
 
     if llm_provider == "OpenAI":
-        models_available = ["gpt-5-mini", "gpt-5-chat-latest", "gpt-5-nano"]
+        models_available = ["gpt-5-mini", "gpt-5-nano"]
+        advanced_model = "gpt-5-chat-latest"
         api_key = st.secrets.get("OPENAI_API_KEY")
         if not api_key:
             st.error("OpenAI API key not found. Please set it in .streamlit/secrets.toml")
             st.stop()
 
     elif llm_provider == "Google Gemini":
-        models_available = ["gemini-2.5-pro", "gemini-2.5-flash-lite","gemini-2.5-flash"]
+        models_available = ["gemini-2.5-flash-lite", "gemini-2.5-flash"]
+        advanced_model = "gemini-2.5-pro"
         api_key = st.secrets.get("GOOGLE_API_KEY")
         if not api_key:
             st.error("Google API key not found. Please set it in .streamlit/secrets.toml")
@@ -52,14 +58,19 @@ def main():
         genai.configure(api_key=api_key)
 
     elif llm_provider == "Anthropic Claude":
-        
-        models_available = ["claude-3-5-haiku-20241022", "claude-sonnet-4-20250514","claude-opus-4-20250514"]
+        models_available = ["claude-3-5-haiku-20241022", "claude-sonnet-4-20250514"]
+        advanced_model = "claude-opus-4-20250514"
         api_key = st.secrets.get("ANTHROPIC_API_KEY")
         if not api_key:
             st.error("Anthropic API key not found. Please set it in .streamlit/secrets.toml")
             st.stop()
 
-    model = st.sidebar.selectbox("Choose the model:", options=models_available)
+    # --- Decide model based on checkbox ---
+    if use_advanced:
+        model = advanced_model
+    else:
+        model = st.sidebar.selectbox("Choose the model:", options=models_available)
+
     summary_type = st.sidebar.radio(
         "Choose summary style:",
         ("100 words", "2 paragraphs", "5 bullet points")
@@ -125,4 +136,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
