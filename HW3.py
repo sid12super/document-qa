@@ -51,7 +51,7 @@ def main():
     
     LLM_CONFIG = {
         "OpenAI": {
-            "available_models": ["gpt-5-mini", "gpt-5-nano", "gpt-5-chat-latest"],
+            "available_models": ["gpt-4o-mini", "gpt-5-nano", "gpt-5-chat-latest"],
             "secret_key": "OPENAI_API_KEY"
         },
         "Google Gemini": {
