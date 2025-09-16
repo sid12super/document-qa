@@ -13,9 +13,8 @@ def fetch_url_content(url):
     """Fetches and extracts text content from a URL."""
     try:
         response = requests.get(url, timeout=10)
-        response.raise_for_status()  # Raise an exception for bad status codes
+        response.raise_for_status()
         soup = BeautifulSoup(response.content, 'html.parser')
-        # Remove script and style elements
         for script_or_style in soup(["script", "style"]):
             script_or_style.decompose()
         text = soup.get_text(separator='\n', strip=True)
@@ -29,7 +28,6 @@ def get_token_count(text, model="gpt-5-nano"):
     try:
         encoding = tiktoken.encoding_for_model(model)
     except KeyError:
-        # Fallback for models not in tiktoken
         encoding = tiktoken.get_encoding("cl100k_base")
     return len(encoding.encode(text))
 
@@ -52,10 +50,7 @@ def main():
     )
     
     use_advanced = st.sidebar.checkbox("Use advanced model")
-
-    # --- CORRECTED: This entire block was moved inside main() ---
     
-    # A dictionary to hold all provider-specific configurations
     LLM_CONFIG = {
         "OpenAI": {
             "models": ["gpt-5-mini", "gpt-5-nano"],
@@ -74,12 +69,10 @@ def main():
         }
     }
 
-    # Get configuration for the selected provider
     provider_config = LLM_CONFIG.get(llm_provider)
     models_available = provider_config["models"]
     advanced_model = provider_config["advanced_model"]
 
-    # Get and validate the API key dynamically
     api_key_name = provider_config["secret_key"]
     api_key = st.secrets.get(api_key_name)
 
@@ -87,7 +80,6 @@ def main():
         st.warning(f"{llm_provider} API key not found. Please set `{api_key_name}` in your secrets file.")
         st.stop()
     
-    # CORRECTED: Added missing configuration step for Google Gemini
     if llm_provider == "Google Gemini":
         genai.configure(api_key=api_key)
 
@@ -121,41 +113,64 @@ def main():
             st.error("Please provide at least one URL in the sidebar.")
             st.stop()
 
-        # Append and display user message
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Fetch and process URL content
         with st.spinner("Fetching and processing content from URLs..."):
             content1 = fetch_url_content(url1) if url1 else ""
             content2 = fetch_url_content(url2) if url2 else ""
             url_context = f"CONTENT FROM URL 1:\n{content1}\n\nCONTENT FROM URL 2:\n{content2}"
 
+        # --- CORRECTED: Logic to build and use the conversation buffer ---
+        
+        # Get message history, excluding the most recent prompt
+        history = st.session_state.messages[:-1]
+        history_buffer = []
 
-        # --- Create Conversation Buffer based on Memory Type ---
-        messages_to_send = []
         if memory_type == "Buffer of 6 messages":
-            messages_to_send = st.session_state.messages[-6:]
+            history_buffer = history[-6:]
         elif memory_type == "Buffer of 2,000 tokens":
             current_tokens = 0
-            for msg in reversed(st.session_state.messages):
+            for msg in reversed(history):
                 msg_tokens = get_token_count(msg["content"], selected_model)
                 if current_tokens + msg_tokens <= 2000:
-                    messages_to_send.insert(0, msg)
+                    history_buffer.insert(0, msg)
                     current_tokens += msg_tokens
                 else:
                     break
-        elif memory_type == "Conversation Summary":
-            if st.session_state.conversation_summary:
-                messages_to_send.append({"role": "system", "content": f"Here is a summary of the conversation so far: {st.session_state.conversation_summary}"})
-            messages_to_send.append(st.session_state.messages[-1]) # Add the latest user prompt
+        
+        # This will be handled differently for each API type below
+        # For "Conversation Summary", we pass the summary text directly.
 
-        # --- Construct the final prompt for the API ---
-        final_messages_for_api = [
-            {"role": "system", "content": "You are a helpful assistant. Answer the user's question based on the provided URL content. If the answer is not in the content, say so."},
-            {"role": "user", "content": f"CONTEXT:\n{url_context}\n\nQUESTION:\n{prompt}"}
-        ]
+        # --- Construct final prompt based on provider and memory ---
+        
+        system_prompt_text = "You are a helpful assistant. Answer the user's question based on the provided URL content and conversation history. If the answer is not in the content, say so."
+        
+        final_messages_for_api = []
+        gemini_prompt = ""
+
+        if llm_provider == "Google Gemini":
+            # For Gemini, we build a single text prompt
+            history_str = ""
+            if memory_type == "Conversation Summary":
+                if st.session_state.conversation_summary:
+                    history_str = f"CONVERSATION SUMMARY:\n{st.session_state.conversation_summary}"
+            else:
+                history_str = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history_buffer])
+            
+            gemini_prompt = f"{system_prompt_text}\n\n{history_str}\n\nCONTEXT FROM URLS:\n{url_context}\n\nUSER QUESTION:\n{prompt}"
+        else:
+            # For OpenAI and Claude, we build a list of message dictionaries
+            final_messages_for_api.append({"role": "system", "content": system_prompt_text})
+            
+            if memory_type == "Conversation Summary":
+                if st.session_state.conversation_summary:
+                    final_messages_for_api.append({"role": "system", "content": f"Here is a summary of the conversation so far: {st.session_state.conversation_summary}"})
+            else:
+                final_messages_for_api.extend(history_buffer)
+            
+            final_messages_for_api.append({"role": "user", "content": f"CONTEXT:\n{url_context}\n\nQUESTION:\n{prompt}"})
         
         # --- API Call and Streaming Response ---
         try:
@@ -163,40 +178,26 @@ def main():
                 message_placeholder = st.empty()
                 full_response_content = ""
 
-                # Provider-specific API calls
                 if llm_provider == "OpenAI":
                     client = OpenAI(api_key=api_key)
-                    stream = client.chat.completions.create(
-                        model=selected_model,
-                        messages=final_messages_for_api,
-                        stream=True,
-                    )
+                    stream = client.chat.completions.create(model=selected_model, messages=final_messages_for_api, stream=True)
                     for chunk in stream:
-                        if chunk.choices[0].delta.content is not in [None, ""]:
+                        if chunk.choices[0].delta.content is not None:
                             full_response_content += chunk.choices[0].delta.content
                             message_placeholder.markdown(full_response_content + "▌")
                 
                 elif llm_provider == "Google Gemini":
                     model = genai.GenerativeModel(selected_model)
-                    gemini_prompt = f"CONTEXT:\n{url_context}\n\nQUESTION:\n{prompt}"
                     stream = model.generate_content(gemini_prompt, stream=True)
                     for chunk in stream:
                         full_response_content += chunk.text
                         message_placeholder.markdown(full_response_content + "▌")
 
-                # CORRECTED: Re-applied the fix for the Anthropic Claude API call
                 elif llm_provider == "Anthropic Claude":
                     client = anthropic.Anthropic(api_key=api_key)
                     system_prompt = final_messages_for_api[0]['content']
                     claude_messages = final_messages_for_api[1:]
-
-                    stream = client.messages.create(
-                        model=selected_model,
-                        max_tokens=2048,
-                        system=system_prompt,
-                        messages=claude_messages,
-                        stream=True
-                    )
+                    stream = client.messages.create(model=selected_model, max_tokens=2048, system=system_prompt, messages=claude_messages, stream=True)
                     for chunk in stream:
                         if chunk.type == "content_block_delta":
                             full_response_content += chunk.delta.text
@@ -206,20 +207,13 @@ def main():
             
             st.session_state.messages.append({"role": "assistant", "content": full_response_content})
 
-            # CORRECTED: Added a check for the OpenAI key before trying to summarize
             if memory_type == "Conversation Summary" and st.secrets.get("OPENAI_API_KEY"):
                 with st.spinner("Creating conversation summary..."):
                     summary_prompt = "Please create a concise summary of the following conversation for your own memory."
                     conversation_for_summary = st.session_state.messages
                     
                     client = OpenAI(api_key=st.secrets.get("OPENAI_API_KEY")) 
-                    response = client.chat.completions.create(
-                        model="gpt-4o-mini",
-                        messages=[
-                            {"role": "system", "content": summary_prompt},
-                            *conversation_for_summary
-                        ],
-                    )
+                    response = client.chat.completions.create(model="gpt-4o-mini", messages=[{"role": "system", "content": summary_prompt}, *conversation_for_summary])
                     st.session_state.conversation_summary = response.choices[0].message.content
 
         except Exception as e:
