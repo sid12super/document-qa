@@ -89,11 +89,24 @@ def main():
         ("Buffer of 6 messages", "Conversation Summary", "Buffer of 2,000 tokens")
     )
 
-    # Initialize Session State
+    # --- Initialize Session State ---
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "conversation_summary" not in st.session_state:
         st.session_state.conversation_summary = ""
+    # ADDED: Initialize token_count in session state
+    if "token_count" not in st.session_state:
+        st.session_state.token_count = 0
+
+    # --- ADDED: Display the token tracker in the sidebar ---
+    if memory_type == "Buffer of 2,000 tokens":
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("Token Buffer Tracker")
+        progress = st.session_state.token_count / 2000.0
+        st.sidebar.progress(progress)
+        st.sidebar.markdown(f"**{st.session_state.token_count}** / 2000 tokens used")
+        st.sidebar.markdown("---")
+
 
     # Display Chat History
     for message in st.session_state.messages:
@@ -130,6 +143,12 @@ def main():
                     current_tokens += msg_tokens
                 else:
                     break
+            # ADDED: Update the token count in session state
+            st.session_state.token_count = current_tokens
+        
+        # Reset token count if another memory type is used
+        if memory_type != "Buffer of 2,000 tokens":
+            st.session_state.token_count = 0
         
         # Construct final prompt based on provider and memory
         system_prompt_text = "You are a helpful assistant. Answer the user's question based on the provided URL content and conversation history. If the answer is not in the content, say so."
@@ -178,8 +197,6 @@ def main():
 
                 elif llm_provider == "Anthropic Claude":
                     client = anthropic.Anthropic(api_key=api_key)
-                    
-                    # --- CORRECTED: This block now correctly handles all system messages ---
                     system_prompts_content = []
                     claude_messages = []
                     for msg in final_messages_for_api:
@@ -189,14 +206,7 @@ def main():
                             claude_messages.append(msg)
                     
                     combined_system_prompt = "\n\n".join(system_prompts_content)
-
-                    stream = client.messages.create(
-                        model=selected_model,
-                        max_tokens=2048,
-                        system=combined_system_prompt, # Pass the single, combined system prompt
-                        messages=claude_messages,      # Pass only user/assistant messages
-                        stream=True
-                    )
+                    stream = client.messages.create(model=selected_model, max_tokens=2048, system=combined_system_prompt, messages=claude_messages, stream=True)
                     for chunk in stream:
                         if chunk.type == "content_block_delta":
                             full_response_content += chunk.delta.text
