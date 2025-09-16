@@ -49,30 +49,34 @@ def main():
         ("OpenAI", "Google Gemini", "Anthropic Claude")
     )
     
-    use_advanced = st.sidebar.checkbox("Use advanced model")
-    
+    # --- CORRECTED: Merged standard and advanced models into one list ---
     LLM_CONFIG = {
         "OpenAI": {
-            "models": ["gpt-5-mini", "gpt-5-nano"],
-            "advanced_model": "gpt-5-chat-latest",
+            "available_models": ["gpt-5-mini", "gpt-5-nano", "gpt-5-chat-latest"],
             "secret_key": "OPENAI_API_KEY"
         },
         "Google Gemini": {
-            "models": ["gemini-2.5-flash-lite", "gemini-2.5-flash"],
-            "advanced_model": "gemini-2.5-pro",
+            "available_models": ["gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-2.5-pro"],
             "secret_key": "GOOGLE_API_KEY"
         },
         "Anthropic Claude": {
-            "models": ["claude-3-5-haiku-20241022", "claude-sonnet-4-20250514"],
-            "advanced_model": "claude-opus-4-20250514",
+            "available_models": ["claude-3-5-haiku-20241022", "claude-sonnet-4-20250514", "claude-opus-4-20250514"],
             "secret_key": "ANTHROPIC_API_KEY"
         }
     }
 
     provider_config = LLM_CONFIG.get(llm_provider)
-    models_available = provider_config["models"]
-    advanced_model = provider_config["advanced_model"]
+    
+    # --- CORRECTED: Replaced checkbox with a model selection dropdown ---
+    models_for_provider = provider_config["available_models"]
+    selected_model = st.sidebar.selectbox(
+        "Choose a Model:",
+        options=models_for_provider
+    )
+    st.sidebar.info(f"Using model: **{selected_model}**")
 
+
+    # Get and validate the API key dynamically
     api_key_name = provider_config["secret_key"]
     api_key = st.secrets.get(api_key_name)
 
@@ -83,31 +87,24 @@ def main():
     if llm_provider == "Google Gemini":
         genai.configure(api_key=api_key)
 
-    if use_advanced:
-        selected_model = advanced_model
-        st.sidebar.info(f"Using advanced model: **{selected_model}**")
-    else:
-        selected_model = models_available[0]
-        st.sidebar.info(f"Using standard model: **{selected_model}**")
-
     st.sidebar.header("Memory Settings")
     memory_type = st.sidebar.radio(
         "Choose conversation memory type:",
         ("Buffer of 6 messages", "Conversation Summary", "Buffer of 2,000 tokens")
     )
 
-    # --- Initialize Session State ---
+    # Initialize Session State
     if "messages" not in st.session_state:
         st.session_state.messages = []
     if "conversation_summary" not in st.session_state:
         st.session_state.conversation_summary = ""
 
-    # --- Display Chat History ---
+    # Display Chat History
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # --- Handle New User Input ---
+    # Handle New User Input
     if prompt := st.chat_input("Ask a question about the content of the URLs..."):
         if not url1 and not url2:
             st.error("Please provide at least one URL in the sidebar.")
@@ -122,9 +119,7 @@ def main():
             content2 = fetch_url_content(url2) if url2 else ""
             url_context = f"CONTENT FROM URL 1:\n{content1}\n\nCONTENT FROM URL 2:\n{content2}"
 
-        # --- CORRECTED: Logic to build and use the conversation buffer ---
-        
-        # Get message history, excluding the most recent prompt
+        # Build conversation buffer
         history = st.session_state.messages[:-1]
         history_buffer = []
 
@@ -140,39 +135,31 @@ def main():
                 else:
                     break
         
-        # This will be handled differently for each API type below
-        # For "Conversation Summary", we pass the summary text directly.
-
-        # --- Construct final prompt based on provider and memory ---
-        
+        # Construct final prompt based on provider and memory
         system_prompt_text = "You are a helpful assistant. Answer the user's question based on the provided URL content and conversation history. If the answer is not in the content, say so."
         
         final_messages_for_api = []
         gemini_prompt = ""
 
         if llm_provider == "Google Gemini":
-            # For Gemini, we build a single text prompt
             history_str = ""
-            if memory_type == "Conversation Summary":
-                if st.session_state.conversation_summary:
-                    history_str = f"CONVERSATION SUMMARY:\n{st.session_state.conversation_summary}"
+            if memory_type == "Conversation Summary" and st.session_state.conversation_summary:
+                history_str = f"CONVERSATION SUMMARY:\n{st.session_state.conversation_summary}"
             else:
                 history_str = "\n".join([f"{msg['role']}: {msg['content']}" for msg in history_buffer])
             
             gemini_prompt = f"{system_prompt_text}\n\n{history_str}\n\nCONTEXT FROM URLS:\n{url_context}\n\nUSER QUESTION:\n{prompt}"
         else:
-            # For OpenAI and Claude, we build a list of message dictionaries
             final_messages_for_api.append({"role": "system", "content": system_prompt_text})
             
-            if memory_type == "Conversation Summary":
-                if st.session_state.conversation_summary:
-                    final_messages_for_api.append({"role": "system", "content": f"Here is a summary of the conversation so far: {st.session_state.conversation_summary}"})
+            if memory_type == "Conversation Summary" and st.session_state.conversation_summary:
+                final_messages_for_api.append({"role": "system", "content": f"Here is a summary of the conversation so far: {st.session_state.conversation_summary}"})
             else:
                 final_messages_for_api.extend(history_buffer)
             
             final_messages_for_api.append({"role": "user", "content": f"CONTEXT:\n{url_context}\n\nQUESTION:\n{prompt}"})
         
-        # --- API Call and Streaming Response ---
+        # API Call and Streaming Response
         try:
             with st.chat_message("assistant"):
                 message_placeholder = st.empty()
