@@ -46,7 +46,6 @@ def main():
 
     st.sidebar.header("Model Configuration")
     
-    # User-provided code for LLM selection
     llm_provider = st.sidebar.selectbox(
         "Choose LLM Provider:",
         ("OpenAI", "Google Gemini", "Anthropic Claude")
@@ -54,35 +53,43 @@ def main():
     
     use_advanced = st.sidebar.checkbox("Use advanced model")
 
-    # Model and API key setup based on provider
-    models_available = []
-    advanced_model = None
-    selected_model = None
+    # --- CORRECTED: This entire block was moved inside main() ---
     
-    if llm_provider == "OpenAI":
-        models_available = ["gpt-5-mini", "gpt-5-nano"]
-        advanced_model = "gpt-5-chat-latest"
-        api_key = st.secrets.get("OPENAI_API_KEY")
-        if not api_key:
-            st.error("OpenAI API key not found. Please set it in .streamlit/secrets.toml")
-            st.stop()
+    # A dictionary to hold all provider-specific configurations
+    LLM_CONFIG = {
+        "OpenAI": {
+            "models": ["gpt-5-mini", "gpt-5-nano"],
+            "advanced_model": "gpt-5-chat-latest",
+            "secret_key": "OPENAI_API_KEY"
+        },
+        "Google Gemini": {
+            "models": ["gemini-2.5-flash-lite", "gemini-2.5-flash"],
+            "advanced_model": "gemini-2.5-pro",
+            "secret_key": "GOOGLE_API_KEY"
+        },
+        "Anthropic Claude": {
+            "models": ["claude-3-5-haiku-20241022", "claude-sonnet-4-20250514"],
+            "advanced_model": "claude-opus-4-20250514",
+            "secret_key": "ANTHROPIC_API_KEY"
+        }
+    }
 
-    elif llm_provider == "Google Gemini":
-        models_available = ["gemini-2.5-flash-lite", "gemini-2.5-flash"]
-        advanced_model = "gemini-2.5-pro"
-        api_key = st.secrets.get("GOOGLE_API_KEY")
-        if not api_key:
-            st.error("Google API key not found. Please set it in .streamlit/secrets.toml")
-            st.stop()
+    # Get configuration for the selected provider
+    provider_config = LLM_CONFIG.get(llm_provider)
+    models_available = provider_config["models"]
+    advanced_model = provider_config["advanced_model"]
+
+    # Get and validate the API key dynamically
+    api_key_name = provider_config["secret_key"]
+    api_key = st.secrets.get(api_key_name)
+
+    if not api_key:
+        st.warning(f"{llm_provider} API key not found. Please set `{api_key_name}` in your secrets file.")
+        st.stop()
+    
+    # CORRECTED: Added missing configuration step for Google Gemini
+    if llm_provider == "Google Gemini":
         genai.configure(api_key=api_key)
-
-    elif llm_provider == "Anthropic Claude":
-        models_available = ["claude-3-5-haiku-20241022", "claude-sonnet-4-20250514"]
-        advanced_model = "claude-opus-4-20250514"
-        api_key = st.secrets.get("ANTHROPIC_API_KEY")
-        if not api_key:
-            st.error("Anthropic API key not found. Please set it in .streamlit/secrets.toml")
-            st.stop()
 
     if use_advanced:
         selected_model = advanced_model
@@ -90,7 +97,6 @@ def main():
     else:
         selected_model = models_available[0]
         st.sidebar.info(f"Using standard model: **{selected_model}**")
-
 
     st.sidebar.header("Memory Settings")
     memory_type = st.sidebar.radio(
@@ -109,16 +115,10 @@ def main():
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # --- Handle New User Input (via text_input and button) ---
-    prompt = st.chat_input("Ask a question about the content of the URLs...")
-
-    if prompt:
-        # Check if URLs are provided
+    # --- Handle New User Input ---
+    if prompt := st.chat_input("Ask a question about the content of the URLs..."):
         if not url1 and not url2:
             st.error("Please provide at least one URL in the sidebar.")
-            st.stop()
-        if not api_key:
-            st.error(f"API Key for {llm_provider} is missing. Please check your Streamlit secrets.")
             st.stop()
 
         # Append and display user message
@@ -131,6 +131,7 @@ def main():
             content1 = fetch_url_content(url1) if url1 else ""
             content2 = fetch_url_content(url2) if url2 else ""
             url_context = f"CONTENT FROM URL 1:\n{content1}\n\nCONTENT FROM URL 2:\n{content2}"
+
 
         # --- Create Conversation Buffer based on Memory Type ---
         messages_to_send = []
@@ -151,7 +152,6 @@ def main():
             messages_to_send.append(st.session_state.messages[-1]) # Add the latest user prompt
 
         # --- Construct the final prompt for the API ---
-        # We create a system message with the URL content to provide context
         final_messages_for_api = [
             {"role": "system", "content": "You are a helpful assistant. Answer the user's question based on the provided URL content. If the answer is not in the content, say so."},
             {"role": "user", "content": f"CONTEXT:\n{url_context}\n\nQUESTION:\n{prompt}"}
@@ -163,7 +163,7 @@ def main():
                 message_placeholder = st.empty()
                 full_response_content = ""
 
-                # --- Provider-specific API calls ---
+                # Provider-specific API calls
                 if llm_provider == "OpenAI":
                     client = OpenAI(api_key=api_key)
                     stream = client.chat.completions.create(
@@ -172,26 +172,29 @@ def main():
                         stream=True,
                     )
                     for chunk in stream:
-                        if chunk.choices[0].delta.content is not None:
+                        if chunk.choices[0].delta.content is not in [None, ""]:
                             full_response_content += chunk.choices[0].delta.content
                             message_placeholder.markdown(full_response_content + "▌")
                 
                 elif llm_provider == "Google Gemini":
                     model = genai.GenerativeModel(selected_model)
-                    # Gemini API uses a different message format
                     gemini_prompt = f"CONTEXT:\n{url_context}\n\nQUESTION:\n{prompt}"
                     stream = model.generate_content(gemini_prompt, stream=True)
                     for chunk in stream:
                         full_response_content += chunk.text
                         message_placeholder.markdown(full_response_content + "▌")
 
+                # CORRECTED: Re-applied the fix for the Anthropic Claude API call
                 elif llm_provider == "Anthropic Claude":
                     client = anthropic.Anthropic(api_key=api_key)
-                    # Claude API also has its own format
+                    system_prompt = final_messages_for_api[0]['content']
+                    claude_messages = final_messages_for_api[1:]
+
                     stream = client.messages.create(
                         model=selected_model,
                         max_tokens=2048,
-                        messages=final_messages_for_api,
+                        system=system_prompt,
+                        messages=claude_messages,
                         stream=True
                     )
                     for chunk in stream:
@@ -203,13 +206,12 @@ def main():
             
             st.session_state.messages.append({"role": "assistant", "content": full_response_content})
 
-            # --- Update Conversation Summary if needed ---
-            if memory_type == "Conversation Summary":
+            # CORRECTED: Added a check for the OpenAI key before trying to summarize
+            if memory_type == "Conversation Summary" and st.secrets.get("OPENAI_API_KEY"):
                 with st.spinner("Creating conversation summary..."):
                     summary_prompt = "Please create a concise summary of the following conversation for your own memory."
                     conversation_for_summary = st.session_state.messages
                     
-                    # Using OpenAI to summarize for simplicity, can be adapted
                     client = OpenAI(api_key=st.secrets.get("OPENAI_API_KEY")) 
                     response = client.chat.completions.create(
                         model="gpt-4o-mini",
