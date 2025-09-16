@@ -49,7 +49,6 @@ def main():
         ("OpenAI", "Google Gemini", "Anthropic Claude")
     )
     
-    # --- CORRECTED: Merged standard and advanced models into one list ---
     LLM_CONFIG = {
         "OpenAI": {
             "available_models": ["gpt-5-mini", "gpt-5-nano", "gpt-5-chat-latest"],
@@ -67,7 +66,6 @@ def main():
 
     provider_config = LLM_CONFIG.get(llm_provider)
     
-    # --- CORRECTED: Replaced checkbox with a model selection dropdown ---
     models_for_provider = provider_config["available_models"]
     selected_model = st.sidebar.selectbox(
         "Choose a Model:",
@@ -75,8 +73,6 @@ def main():
     )
     st.sidebar.info(f"Using model: **{selected_model}**")
 
-
-    # Get and validate the API key dynamically
     api_key_name = provider_config["secret_key"]
     api_key = st.secrets.get(api_key_name)
 
@@ -182,9 +178,25 @@ def main():
 
                 elif llm_provider == "Anthropic Claude":
                     client = anthropic.Anthropic(api_key=api_key)
-                    system_prompt = final_messages_for_api[0]['content']
-                    claude_messages = final_messages_for_api[1:]
-                    stream = client.messages.create(model=selected_model, max_tokens=2048, system=system_prompt, messages=claude_messages, stream=True)
+                    
+                    # --- CORRECTED: This block now correctly handles all system messages ---
+                    system_prompts_content = []
+                    claude_messages = []
+                    for msg in final_messages_for_api:
+                        if msg['role'] == 'system':
+                            system_prompts_content.append(msg['content'])
+                        else:
+                            claude_messages.append(msg)
+                    
+                    combined_system_prompt = "\n\n".join(system_prompts_content)
+
+                    stream = client.messages.create(
+                        model=selected_model,
+                        max_tokens=2048,
+                        system=combined_system_prompt, # Pass the single, combined system prompt
+                        messages=claude_messages,      # Pass only user/assistant messages
+                        stream=True
+                    )
                     for chunk in stream:
                         if chunk.type == "content_block_delta":
                             full_response_content += chunk.delta.text
