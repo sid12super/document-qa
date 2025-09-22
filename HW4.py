@@ -185,8 +185,16 @@ def main():
     # Model selection dropdown
     selected_llm = st.sidebar.selectbox("Choose an LLM:", ("OpenAI", "Google", "Anthropic"))
 
+    # Map LLM providers to specific model names
+    model_mapping = {
+        "OpenAI": "gpt-5-chat-latest",
+        "Google": "gemini-2.5-pro-latest",
+        "Anthropic": "claude-sonnet-4-20250514"
+    }
+    selected_model = model_mapping[selected_llm]
+
     # Display the currently selected model in the sidebar
-    st.sidebar.markdown(f"**Currently Selected Model:** {selected_llm}")
+    st.sidebar.markdown(f"**Currently Selected Model:** {selected_model}")
 
     st.sidebar.markdown("---")
     st.sidebar.header("Management")
@@ -217,7 +225,7 @@ def main():
         chat_history = st.session_state.messages[-11:-1]
         response_content = get_llm_response(selected_llm, prompt, context, chat_history)
         
-        full_response = f"**Answer from {selected_llm}:**\n\n{response_content}"
+        full_response = f"**Answer from {selected_model}:**\n\n{response_content}"
         st.session_state.messages.append({"role": "assistant", "content": full_response})
         with st.chat_message("assistant"):
             st.markdown(full_response)
