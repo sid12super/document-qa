@@ -1,4 +1,5 @@
 streamlit
+PyPDF2
 pypdf
 openai
 requests
@@ -6,3 +7,9 @@ beautifulsoup4
 google-generativeai
 anthropic
 tiktoken
+chromadb
+langchain
+pysqlite3-binary
+setuptools
+wheel
+protobuf
