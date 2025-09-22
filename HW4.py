@@ -182,8 +182,12 @@ def main():
         st.error(f"Failed to initialize one or more LLM clients. Please check your API keys in Streamlit secrets. Error: {e}")
         st.stop()
 
+    # Model selection dropdown
     selected_llm = st.sidebar.selectbox("Choose an LLM:", ("OpenAI", "Google", "Anthropic"))
-    
+
+    # Display the currently selected model in the sidebar
+    st.sidebar.markdown(f"**Currently Selected Model:** {selected_llm}")
+
     st.sidebar.markdown("---")
     st.sidebar.header("Management")
     if st.sidebar.button("Clear Chat History", key="clear_chat"):
