@@ -149,7 +149,7 @@ def get_llm_response(llm_provider, prompt, context, chat_history):
         with st.spinner(f"Asking {llm_provider}..."):
             if llm_provider == "OpenAI":
                 client = st.session_state.openai_client
-                response = client.chat.completions.create(model="gpt-4o", messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": final_prompt}], max_tokens=2048)
+                response = client.chat.completions.create(model="gpt-5-chat-latest", messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": final_prompt}], max_tokens=2048)
                 return response.choices[0].message.content
             elif llm_provider == "Google":
                 client = st.session_state.gemini_client
@@ -158,7 +158,7 @@ def get_llm_response(llm_provider, prompt, context, chat_history):
                 return response.text
             elif llm_provider == "Anthropic":
                 client = st.session_state.anthropic_client
-                response = client.messages.create(model="claude-3-5-sonnet-20240620", system=system_prompt, messages=[{"role": "user", "content": final_prompt}], max_tokens=2048)
+                response = client.messages.create(model="claude-sonnet-4-20250514", system=system_prompt, messages=[{"role": "user", "content": final_prompt}], max_tokens=2048)
                 return response.content[0].text
     except Exception as e:
         st.error(f"An error occurred with {llm_provider}: {e}")
@@ -175,7 +175,7 @@ def main():
             st.session_state.openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         if 'gemini_client' not in st.session_state:
             genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-            st.session_state.gemini_client = genai.GenerativeModel('gemini-1.5-pro-latest')
+            st.session_state.gemini_client = genai.GenerativeModel('gemini-2.5-pro-latest')
         if 'anthropic_client' not in st.session_state:
             st.session_state.anthropic_client = Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
     except Exception as e:
