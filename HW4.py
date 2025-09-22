@@ -175,7 +175,7 @@ def main():
             st.session_state.openai_client = OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         if 'gemini_client' not in st.session_state:
             genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-            st.session_state.gemini_client = genai.GenerativeModel('gemini-2.5-pro-latest')
+            st.session_state.gemini_client = genai.GenerativeModel('gemini-2.5-pro')
         if 'anthropic_client' not in st.session_state:
             st.session_state.anthropic_client = Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
     except Exception as e:
