@@ -1,12 +1,15 @@
+# HW5.py
+
 import streamlit as st
 import openai
+import google.generativeai as genai
+from anthropic import Anthropic
 import os
 import sys
 from bs4 import BeautifulSoup
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 # --- Fix for ChromaDB and Streamlit compatibility ---
-# This workaround is necessary for ChromaDB to function correctly in environments like GitHub Codespaces.
 __import__('pysqlite3')
 sys.modules['sqlite3'] = sys.modules.pop('pysqlite3')
 
@@ -18,7 +21,6 @@ SOURCE_DIR = "su_orgs"  # Directory containing source HTML files
 CHROMA_COLLECTION_NAME = "SU_Club_Collection"
 
 # --- ChromaDB Client Initialization ---
-# Initialize a persistent ChromaDB client to save the database to disk.
 try:
     chroma_client = chromadb.PersistentClient(path=CHROMA_DB_PATH)
     collection = chroma_client.get_or_create_collection(name=CHROMA_COLLECTION_NAME)
@@ -43,19 +45,17 @@ def extract_text_from_html(file_path: str) -> str | None:
 def setup_vector_db(force_rebuild: bool = False):
     """
     Creates and populates the Vector DB from HTML files in the SOURCE_DIR.
-    This function will only run if the database is empty or if a rebuild is forced.
     """
-    global collection  # <-- MOVED to the top of the function
+    global collection
 
     if collection.count() > 0 and not force_rebuild:
-        st.sidebar.info(f"Vector DB already contains {collection.count()} document chunks.")
+        st.sidebar.info(f"Vector DB contains {collection.count()} chunks.")
         return
 
-    st.sidebar.warning("Building Vector DB. This may take a moment...")
+    st.sidebar.warning("Building Vector DB...")
     with st.spinner("Processing files, chunking text, and creating embeddings..."):
-        # Ensure the source directory exists
         if not os.path.exists(SOURCE_DIR):
-            st.sidebar.error(f"Source directory '{SOURCE_DIR}' not found. Please create it and add your HTML files.")
+            st.sidebar.error(f"Source directory '{SOURCE_DIR}' not found. Please add your HTML files.")
             st.stop()
             
         source_files = [f for f in os.listdir(SOURCE_DIR) if f.endswith(".html")]
@@ -63,12 +63,12 @@ def setup_vector_db(force_rebuild: bool = False):
             st.sidebar.error(f"No HTML files found in the '{SOURCE_DIR}' directory.")
             st.stop()
 
+        if 'openai_client' not in st.session_state:
+             st.session_state.openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
         openai_client = st.session_state.openai_client
         
-        # Clear old collection if rebuilding
         if force_rebuild:
             chroma_client.delete_collection(name=CHROMA_COLLECTION_NAME)
-            # The 'global' keyword is no longer needed here
             collection = chroma_client.get_or_create_collection(name=CHROMA_COLLECTION_NAME)
 
         for filename in source_files:
@@ -89,12 +89,11 @@ def setup_vector_db(force_rebuild: bool = False):
                 except Exception as e:
                     st.error(f"Failed to embed chunk {chunk_id}: {e}")
     
-    st.sidebar.success(f"Vector DB built successfully with {collection.count()} chunks.", icon="✅")
+    st.sidebar.success(f"Vector DB built with {collection.count()} chunks.", icon="✅")
     
 def get_relevant_club_info(query: str, n_results: int = 3) -> str:
     """
-    Takes a user query, embeds it, and performs a vector search in ChromaDB 
-    to find the most relevant text chunks (course/club info).
+    Performs a vector search in ChromaDB to find relevant text chunks.
     """
     try:
         openai_client = st.session_state.openai_client
@@ -103,7 +102,7 @@ def get_relevant_club_info(query: str, n_results: int = 3) -> str:
         
         results = collection.query(query_embeddings=[query_embedding], n_results=n_results)
         
-        context = "\n---\n".join(results['documents'][0]) if results.get('documents') else "No relevant information found in the documents."
+        context = "\n---\n".join(results['documents'][0]) if results.get('documents') else "No relevant information found."
         return context
     except Exception as e:
         st.error(f"Error querying Vector DB: {e}")
@@ -112,107 +111,135 @@ def get_relevant_club_info(query: str, n_results: int = 3) -> str:
 
 # --- 2. LLM Invocation ---
 
-def get_openai_response(user_prompt: str, context: str, chat_history: list, model_name: str) -> str:
+def get_llm_response(provider: str, model: str, user_prompt: str, context: str, chat_history: list) -> str:
     """
-    Invokes the OpenAI LLM with the user's prompt, retrieved context, and conversation history.
+    Invokes the selected LLM with the user's prompt, context, and history.
     """
     system_prompt = f"""
     You are an expert assistant for Syracuse University student clubs. Your task is to answer the user's question based on the provided context and conversation history.
     - Use the 'RELEVANT INFORMATION' to ground your answer.
-    - Use the 'CONVERSATION HISTORY' to understand the flow of the conversation.
-    - If the answer is in the provided information, synthesize it. Do not just copy-paste.
-    - If the answer is not found, clearly state that you couldn't find the information in your documents.
+    - If the answer is not found, state that you couldn't find the information in your documents.
     - Keep your answers helpful and conversational.
     
     RELEVANT INFORMATION:
     {context}
     """
     
-    # Combine system prompt with user prompt and history
-    messages = [{"role": "system", "content": system_prompt}]
-    messages.extend(chat_history)
-    messages.append({"role": "user", "content": user_prompt})
-
     try:
-        client = st.session_state.openai_client
-        response = client.chat.completions.create(
-            model=model_name,
-            messages=messages,
-            max_tokens=1024
-        )
-        return response.choices[0].message.content
+        if provider == "OpenAI":
+            client = st.session_state.openai_client
+            messages = [{"role": "system", "content": system_prompt}] + chat_history + [{"role": "user", "content": user_prompt}]
+            response = client.chat.completions.create(model=model, messages=messages, max_tokens=1024)
+            return response.choices[0].message.content
+
+        elif provider == "Gemini":
+            client = st.session_state.gemini_client
+            # For Gemini, combine history and prompts into a single string
+            history_str = "\n".join([f"{msg['role']}: {msg['content']}" for msg in chat_history])
+            full_prompt = f"{system_prompt}\n\nCONVERSATION HISTORY:\n{history_str}\n\nUSER QUESTION:\n{user_prompt}"
+            response = client.generate_content(full_prompt)
+            return response.text
+
+        elif provider == "Anthropic":
+            client = st.session_state.anthropic_client
+            response = client.messages.create(
+                model=model,
+                system=system_prompt,  # Use the dedicated system prompt parameter
+                messages=chat_history + [{"role": "user", "content": user_prompt}],
+                max_tokens=1024
+            )
+            return response.content[0].text
+            
     except Exception as e:
-        st.error(f"An error occurred with the OpenAI API: {e}")
-        return "Sorry, I encountered an error while generating a response."
+        st.error(f"An error occurred with {provider}: {e}")
+        return f"Sorry, I encountered an error with the {provider} API."
+
 
 # --- 3. The Main Streamlit App ---
 
 def main():
     st.title("🧠 SU Club Information Chatbot")
-    st.write("Ask me questions about student organizations at Syracuse University!")
+    st.write("Ask questions about student organizations at Syracuse University!")
 
     # --- Sidebar for Configuration and DB Management ---
     with st.sidebar:
-        st.header("Configuration")
-        selected_model = st.selectbox(
-            "Choose an OpenAI Model",
-            ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
-            index=0
+        st.header("⚙️ Configuration")
+
+        # LLM Provider Selection
+        selected_provider = st.selectbox(
+            "Choose an LLM Provider",
+            ["OpenAI", "Gemini", "Anthropic"]
         )
+
+        # Model options based on provider
+        model_options = {
+            "OpenAI": ["gpt-4o", "gpt-4-turbo"],
+            "Gemini": ["gemini-1.5-pro-latest", "gemini-1.5-flash-latest"],
+            "Anthropic": ["claude-3-sonnet-20240229", "claude-3-haiku-20240307"]
+        }
+        
+        # Model Selection
+        selected_model = st.selectbox(
+            "Choose a Model",
+            model_options[selected_provider]
+        )
+        
         st.markdown("---")
-        st.header("Database Management")
+        st.header("🗄️ Database Management")
         if st.button("Re-Build Vector DB"):
             setup_vector_db(force_rebuild=True)
             st.rerun()
 
-    # --- Initialize API client and Vector DB ---
+    # --- Initialize API clients and Vector DB ---
     try:
+        # Store clients in session state to avoid re-initializing
         if 'openai_client' not in st.session_state:
             st.session_state.openai_client = openai.OpenAI(api_key=st.secrets["OPENAI_API_KEY"])
+        if 'gemini_client' not in st.session_state:
+            genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+            st.session_state.gemini_client = genai.GenerativeModel(selected_model) # Model name for Gemini is needed here
+        if 'anthropic_client' not in st.session_state:
+            st.session_state.anthropic_client = Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
+        
+        # Build the DB on first run
         setup_vector_db()
-    except KeyError:
-        st.error("`OPENAI_API_KEY` not found. Please set it in your Streamlit secrets.")
+
+    except KeyError as e:
+        st.error(f"API Key Error: Please make sure `{e.args[0]}` is set in your Streamlit secrets.")
         st.stop()
     except Exception as e:
-        st.error(f"An unexpected error occurred during initialization: {e}")
+        st.error(f"An error occurred during initialization: {e}")
         st.stop()
 
     # --- Chat History Management ---
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Display past messages
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
     # --- Main Chat Logic ---
     if prompt := st.chat_input("Ask about SU clubs..."):
-        # Add user message to history and display it
         st.session_state.messages.append({"role": "user", "content": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        # Process and get assistant response
         with st.chat_message("assistant"):
-            with st.spinner("Thinking..."):
-                # 1. Perform vector search to get relevant info
+            with st.spinner(f"Asking {selected_model}..."):
                 relevant_info = get_relevant_club_info(query=prompt)
-                
-                # 2. Get the last 5 turns of conversation history
-                chat_history = st.session_state.messages[-11:-1]
+                chat_history = st.session_state.messages[-11:-1] # Last 5 turns
 
-                # 3. Invoke the LLM with context and history
-                response_content = get_openai_response(
+                response_content = get_llm_response(
+                    provider=selected_provider,
+                    model=selected_model,
                     user_prompt=prompt,
                     context=relevant_info,
-                    chat_history=chat_history,
-                    model_name=selected_model
+                    chat_history=chat_history
                 )
                 
                 st.markdown(response_content)
         
-        # Add assistant response to history
         st.session_state.messages.append({"role": "assistant", "content": response_content})
 
 if __name__ == "__main__":
