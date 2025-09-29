@@ -45,6 +45,8 @@ def setup_vector_db(force_rebuild: bool = False):
     Creates and populates the Vector DB from HTML files in the SOURCE_DIR.
     This function will only run if the database is empty or if a rebuild is forced.
     """
+    global collection  # <-- MOVED to the top of the function
+
     if collection.count() > 0 and not force_rebuild:
         st.sidebar.info(f"Vector DB already contains {collection.count()} document chunks.")
         return
@@ -66,7 +68,7 @@ def setup_vector_db(force_rebuild: bool = False):
         # Clear old collection if rebuilding
         if force_rebuild:
             chroma_client.delete_collection(name=CHROMA_COLLECTION_NAME)
-            global collection
+            # The 'global' keyword is no longer needed here
             collection = chroma_client.get_or_create_collection(name=CHROMA_COLLECTION_NAME)
 
         for filename in source_files:
@@ -88,7 +90,7 @@ def setup_vector_db(force_rebuild: bool = False):
                     st.error(f"Failed to embed chunk {chunk_id}: {e}")
     
     st.sidebar.success(f"Vector DB built successfully with {collection.count()} chunks.", icon="✅")
-
+    
 def get_relevant_club_info(query: str, n_results: int = 3) -> str:
     """
     Takes a user query, embeds it, and performs a vector search in ChromaDB 
