@@ -3,13 +3,14 @@ import HW1  # Renamed from lab1
 import HW2  # Renamed from lab2
 import HW3  # Renamed from lab3
 import HW4  # Renamed from lab4
+import HW5  # Renamed from lab5
 
 def main():
     st.set_page_config(page_title="HW Manager", page_icon="📚")
 
     # Sidebar navigation
     st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to", ["Home", "HW1", "HW2", "HW3", "HW4"])
+    page = st.sidebar.radio("Go to", ["Home", "HW1", "HW2", "HW3", "HW4","HW5"])
 
     # Render the selected page
     if page == "Home":
@@ -27,6 +28,8 @@ def main():
         HW3.main()  # Call the `main` function from HW3.py
     elif page == "HW4":
         HW4.main()  # Call the `main` function from HW4.py
+    elif page == "HW5":
+        HW5.main()  # Call the `main` function from HW5.py
 
 if __name__ == "__main__":
     main()
