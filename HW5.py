@@ -173,9 +173,9 @@ def main():
 
         # Model options based on provider
         model_options = {
-            "OpenAI": ["gpt-4o", "gpt-4-turbo"],
-            "Gemini": ["gemini-1.5-pro-latest", "gemini-1.5-flash-latest"],
-            "Anthropic": ["claude-3-sonnet-20240229", "claude-3-haiku-20240307"]
+            "OpenAI": ["gpt-5-nano", "gpt-5-chat-latest"],
+            "Gemini": ["gemini-2.5-pro", "gemini-2.5-flash"],
+            "Anthropic": ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"]
         }
         
         # Model Selection
