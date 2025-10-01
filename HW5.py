@@ -173,7 +173,7 @@ def main():
 
         # Model options based on provider
         model_options = {
-            "OpenAI": ["gpt-5-nano", "gpt-5-chat-latest"],
+            "OpenAI": ["gpt-5-mini", "gpt-5-chat-latest"],
             "Gemini": ["gemini-2.5-pro", "gemini-2.5-flash"],
             "Anthropic": ["claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"]
         }
