@@ -129,7 +129,7 @@ def get_llm_response(provider: str, model: str, user_prompt: str, context: str, 
         if provider == "OpenAI":
             client = st.session_state.openai_client
             messages = [{"role": "system", "content": system_prompt}] + chat_history + [{"role": "user", "content": user_prompt}]
-            response = client.chat.completions.create(model=model, messages=messages, max_tokens=1024)
+            response = client.chat.completions.create(model=model, messages=messages, max_completion_tokens=1024)
             return response.choices[0].message.content
 
         elif provider == "Gemini":
